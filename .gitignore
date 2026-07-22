@@ -1,0 +1,11 @@
+# raw data is not distributed
+*.csv
+*.xlsx
+*.xls
+data/*.csv
+# python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+# os
+.DS_Store

@@ -1,0 +1,131 @@
+# Detailed Findings
+
+All numbers below were verified by independent recomputation with pandas / lifetimes
+(scripts in [`ground_truth/`](ground_truth/)). Dataset: ~23K orders, 3,399 users, 2015–2020.
+
+---
+
+## 1. The row-count trap: even "how many rows" has a failure mode
+
+**Question:** "How many rows does this file have?"
+
+| Agent | Answer |
+|-------|--------|
+| Kimi | 23,287 |
+| Codex | 23,288 |
+| pandas (`len(df)`) | **23,288** |
+
+**Root cause:** the CSV's last line has no trailing newline. Any method that counts
+newline characters (`wc -l`, naive line iteration) undercounts by one. My own
+initially prepared "ground truth" made the same mistake — the human baseline was
+wrong before the audit even started.
+
+**Lesson:** file-format edge cases (trailing newlines, BOM headers, trailing spaces)
+live below the abstraction layer that agents — and humans — usually look at.
+
+---
+
+## 2. RFM segmentation: same method, same data, 2× different answer
+
+**Question:** "Segment users into the 8 standard RFM classes."
+
+| Segment | Kimi | Codex |
+|---------|------|-------|
+| High-value (R↑F↑M↑) | 948 | 653 |
+| Develop | 100 | 74 |
+| Retain | 587 | 220 |
+| Win-back | 66 | 31 |
+| ... | | |
+
+Both totals = 3,399. Both internally consistent. Both *declared* their methodology
+when asked. Reproduction showed:
+
+- **Codex**: thresholds = mean, R ≤ mean counts as "high" → exactly reproduces 653/74/220/31...
+- **Kimi**: thresholds = median, boundaries use ≥ → exactly reproduces 948/100/587/66...
+
+Because this dataset has heavy-tailed F and M (a few whale users), mean ≫ median,
+so hundreds of mid-range users flip segments depending on one silent choice.
+
+**Lesson:** "use RFM" is not a specification. Threshold statistic and boundary
+operator must be pinned by the human, or two correct agents will ship two
+incompatible customer lists.
+
+---
+
+## 3. Churn definition: the smarter agent's answer is harder to audit
+
+**Question:** "How many days without purchase counts as churned?"
+
+- **Codex:** used mean R (585 days), noted you could substitute 90/180/365 by industry. Mechanical, safe.
+- **Kimi:** observed median R = 434 days → "over half the users buy less than once
+  a year — this looks like low-frequency / high-ticket retail" → proposed 730 days
+  (1,153 users, 33.9%; verified numerically correct).
+
+Kimi's chain of reasoning is what a senior analyst would do — but the business-context
+inference is an *assumption stated as an observation*. It happens to be plausible.
+Nothing in the data can confirm it.
+
+**Lesson:** as agents get better at inference, their unverifiable claims become
+fluent enough to pass review. Confidence is not evidence.
+
+---
+
+## 4. Recency (R): transparency without compatibility
+
+**Question:** "Compute days-since-last-purchase for every user."
+
+Both agents exported per-user tables **and declared their reference dates**:
+
+- Codex: last transaction timestamp (2020-04-25 21:34) → 87% exact match with ground
+  truth (residual = intra-day rounding).
+- Kimi: day *after* the last transaction (2020-04-26) → every single value +1 day.
+
+Neither is wrong. Both are auditable. They are still mutually incompatible, and any
+downstream rule ("churn if R > 365") will classify a band of users differently.
+
+**Lesson:** declared assumptions still need to be *unified* — declaring is the
+agent's job; deciding is the human's.
+
+---
+
+## 5. Data-quality diagnosis: agents found real issues — and the auditor almost failed
+
+Agents correctly and independently found: 1,174 zero-amount orders (5.0%),
+one order id duplicated 3×, 2 fully duplicated rows, and (Codex) trailing spaces
+in **all 23,288** order ids plus 68 order-ids whose embedded date contradicts the
+transaction date.
+
+The near-miss: when I verified the trailing-spaces claim, pandas type inference
+had silently cast order ids to integers — stripping the spaces — and my check
+found none. I briefly concluded Codex had hallucinated. Re-reading the file as
+raw strings (`dtype=str`) confirmed Codex was exactly right.
+
+A second instance of the same failure class: in one Julius session it claimed
+"all amount=150 orders fall on the final day (8 of them)" — recomputation showed
+9 such orders in total, 6 on that day. The same answer *also* contained a novel,
+perfectly accurate insight (zero-amount orders trending up over time: 122 in
+2020-04, 105 in 2019-09 — exact). True and false insights, side by side,
+indistinguishable in tone.
+
+**Lesson:** cross-validation is necessary but not sufficient — the verification
+pipeline itself has failure modes, and tools' default behaviors (type inference,
+encoding, newline handling) are a shared root cause across findings 1 and 5.
+
+---
+
+## 6. Local deployment: the framework survived, the model didn't
+
+Deployment log in [`03_local_deployment/deployment_notes.md`](03_local_deployment/deployment_notes.md). Highlights:
+
+1. Official install script left the application layer (`dbgpt_app`) uninstalled —
+   server could not start. (Fixed by installing the full app stack.)
+2. Default local model qwen3:4b is a *reasoning* model: it spent its entire token
+   budget on hidden chain-of-thought and returned **empty content** for every
+   request — the UI just appeared broken. (Diagnosed by calling the endpoint raw.)
+3. After switching to qwen2.5:3b (non-reasoning), the agent worked but needed
+   20+ steps, one syntax error and one empty-output retry to attempt a question
+   that cloud agents answered in one step.
+
+**Lesson:** for local data agents on consumer hardware, the binding constraint in
+2026 is model capability, not framework maturity. Privacy is real; so is the
+capability gap.
