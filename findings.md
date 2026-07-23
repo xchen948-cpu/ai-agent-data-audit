@@ -100,32 +100,8 @@ had silently cast order ids to integers — stripping the spaces — and my chec
 found none. I briefly concluded Codex had hallucinated. Re-reading the file as
 raw strings (`dtype=str`) confirmed Codex was exactly right.
 
-A second instance of the same failure class: in one Julius session it claimed
-"all amount=150 orders fall on the final day (8 of them)" — recomputation showed
-9 such orders in total, 6 on that day. The same answer *also* contained a novel,
-perfectly accurate insight (zero-amount orders trending up over time: 122 in
-2020-04, 105 in 2019-09 — exact). True and false insights, side by side,
-indistinguishable in tone.
-
 **Lesson:** cross-validation is necessary but not sufficient — the verification
-pipeline itself has failure modes, and tools' default behaviors (type inference,
+pipeline itself has failure modes, and tools' default behaviours (type inference,
 encoding, newline handling) are a shared root cause across findings 1 and 5.
 
 ---
-
-## 6. Local deployment: the framework survived, the model didn't
-
-Deployment log in [`03_local_deployment/deployment_notes.md`](03_local_deployment/deployment_notes.md). Highlights:
-
-1. Official install script left the application layer (`dbgpt_app`) uninstalled —
-   server could not start. (Fixed by installing the full app stack.)
-2. Default local model qwen3:4b is a *reasoning* model: it spent its entire token
-   budget on hidden chain-of-thought and returned **empty content** for every
-   request — the UI just appeared broken. (Diagnosed by calling the endpoint raw.)
-3. After switching to qwen2.5:3b (non-reasoning), the agent worked but needed
-   20+ steps, one syntax error and one empty-output retry to attempt a question
-   that cloud agents answered in one step.
-
-**Lesson:** for local data agents on consumer hardware, the binding constraint in
-2026 is model capability, not framework maturity. Privacy is real; so is the
-capability gap.

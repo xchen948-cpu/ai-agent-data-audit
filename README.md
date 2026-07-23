@@ -1,56 +1,88 @@
-# Auditing AI Data Analysts: A Three-Tier Evaluation of Data Agents
+# Auditing AI Agents as Data Analysts
 
-*Can you trust an AI agent to analyze your data? I tested three tiers of data agents on the same real-world e-commerce dataset — and audited every number they produced against independently computed ground truth.*
+*Two general-purpose AI agents, one real e-commerce dataset, six identical questions —
+and every answer re-computed by hand to see who was right.*
 
-**TL;DR: Every agent executed code correctly. Almost none of them agreed with each other.** The failures were not arithmetic — they were silent, undeclared choices of *definitions*: which reference date, mean vs. median thresholds, whether boundaries include equality. The better the agent, the more professional its mistakes looked.
+**TL;DR: both agents executed code correctly, and they still disagreed.** The
+disagreements were not arithmetic errors — they were silent, undeclared choices of
+*definition*: which reference date, mean vs. median thresholds, whether a boundary
+includes equality. One such choice moved ~300 users between customer segments.
 
 ## Setup
 
-| | Tier | Agents tested | Cost |
-|---|------|--------------|------|
-| 1 | General-purpose agents | Kimi (Moonshot), Codex (OpenAI / GPT-5.5) | Free tier |
-| 2 | Cloud data-analysis specialist | Julius AI | Free credits |
-| 3 | Local private deployment | DB-GPT + Ollama (qwen3:4b → qwen2.5:3b) | Free, fully offline |
+| | |
+|---|---|
+| **Agents** | Kimi (Moonshot AI) · Codex (OpenAI, GPT-5.5) |
+| **Dataset** | ~23K e-commerce orders, 3,399 users, 2015–2020 (transaction time, user id, order id, amount) |
+| **Method** | identical questions to both agents; every answer independently re-computed with pandas / lifetimes |
+| **Ground truth** | [`ground_truth/`](ground_truth/) — runnable scripts |
 
-**Dataset:** ~23K e-commerce orders, 3,399 users, 2015–2020 (transaction time, user id, order id, amount). Raw data not included in this repo — see [`data/README.md`](data/README.md).
+Both tools genuinely write and execute code on the uploaded file (agent behaviour),
+rather than guessing from a preview — which is what makes the disagreements interesting.
 
-**Method:** identical questions to each agent (row counts, monthly revenue, RFM segmentation, churn definition, per-user recency, data-quality diagnosis), every answer re-computed independently with pandas / lifetimes ([`ground_truth/`](ground_truth/)).
+## Scoreboard
 
-## Scoreboard (selected)
+| Question | Kimi | Codex | Verified answer |
+|----------|------|-------|-----------------|
+| Row count | 23,287 ✗ | 23,288 ✓ | **23,288** — the file has no trailing newline, so newline-counting undercounts by one |
+| Distinct users | 3,399 ✓ | 3,399 ✓ | 3,399 |
+| Time range | ✓ | ✓ | 2015-02-12 15:04 → 2020-04-25 21:34 |
+| Highest-revenue month | 2019-12, 10,030,508 ✓ | same ✓ | exact match |
+| RFM 8-segment sizes | high-value **948** | high-value **653** | *both correct* — different undeclared thresholds (median + ≥ vs mean) |
+| Churn threshold | 730 days, inferred "low-frequency / high-ticket retail" from the distribution | 585 days (= mean recency) | no ground truth — this is a business decision |
+| Per-user recency (R) | every value +1 day | 87% exact | different reference dates (2020-04-26 vs 2020-04-25 21:34), both declared |
+| Data-quality scan | 1,174 zero-amount orders, duplicated order id | + trailing spaces on all 23,288 order ids, 68 order-id/date mismatches | all verified ✓ |
 
-| Question | Kimi | Codex | Ground truth |
-|----------|------|-------|--------------|
-| Row count | 23,287 ✗ (off by one) | 23,288 ✓ | 23,288 — file lacks trailing newline; newline-counting undercounts |
-| Distinct users / time range / top revenue month | ✓ | ✓ | agree |
-| RFM: "high-value" segment size | **948** | **653** | *both correct* — Kimi used median + ≥, Codex used mean; one undeclared choice moved ~300 users |
-| Churn threshold | 730 days (inferred business context from distribution) | 585 days (= mean R) | no ground truth — this is a business decision, not a computation |
-| Per-user recency (R) | all values +1 day | 87% exact | different reference dates (2020-04-26 vs 2020-04-25 21:34), both *declared*, still incompatible |
-| Data-quality scan | found 0-amount orders, duplicate order id | + trailing spaces in all 23,288 order ids, 68 order-id/date mismatches | verified ✓ |
+Details and root-cause analysis for each row: [`findings.md`](findings.md).
 
-Full details in [`findings.md`](findings.md).
+## Four takeaways
 
-## Five findings
+1. **The dangerous failures are undeclared definitions, not wrong arithmetic.**
+   Both agents ran "RFM" correctly and produced high-value segments differing by
+   ~45%, because mean-vs-median and `>` vs `≥` were chosen silently.
+   Reproduce both results: [`rfm_threshold_reproduction.py`](ground_truth/rfm_threshold_reproduction.py).
 
-1. **The dangerous failures are not wrong calculations — they are undeclared definitions.** Two agents both "correctly" ran RFM and produced segment sizes differing by 2×, because mean-vs-median and `>` vs `≥` were silently chosen.
-2. **Transparency is not compatibility.** On the recency task both agents *declared* their reference dates — and still produced systematically incompatible results. Only a human can fix the definition.
-3. **Smarter agents make more convincing mistakes.** Kimi inferred a plausible business context ("low-frequency durable goods") from the distribution alone — insightful *and* unverifiable. True and false insights look identical until you recompute.
-4. **The auditor can fail too.** While verifying a "trailing spaces" claim, my own verification pipeline (pandas type inference) silently stripped the spaces and nearly convicted a correct agent of hallucination. Verification methods need verification.
-5. **Local deployment's bottleneck is the model, not the framework.** DB-GPT deployed fine; a 4B reasoning model burned all tokens on thinking and returned empty answers, and a 3B model needed 20+ steps (syntax error → empty output → shell fallback) for a question cloud agents answered in one shot. Full log: [`03_local_deployment/`](03_local_deployment/).
+2. **Transparency ≠ compatibility.** On the recency task both agents *declared*
+   their reference dates and were still systematically one day apart. Declaring
+   assumptions is the agent's job; unifying them is the human's.
 
-## Why this matters
+3. **Smarter agents make more convincing mistakes.** Kimi inferred a plausible
+   business context ("low-frequency, high-ticket retail") purely from the
+   distribution — insightful, fluent, and unverifiable. True and false insights
+   read identically.
 
-Data agents are becoming the default interface to company data. This experiment suggests the near-term risk is not "the AI computes wrong numbers" — it is **plausible, reproducible, internally consistent answers built on definitions nobody signed off on**. The human role shifts from writing queries to *defining metrics and auditing conclusions* — which is exactly the part that cannot be delegated.
+4. **The auditor can fail too.** Verifying the "trailing spaces" claim, my own
+   pandas pipeline silently cast order ids to integers — stripping the spaces —
+   and nearly convicted a correct agent of hallucinating. Re-reading the file as
+   raw strings confirmed the agent was right. Verification methods need verification.
+
+## Why it matters
+
+AI agents are becoming the default interface to company data. This experiment
+suggests the near-term risk is not "the AI computes the wrong number" — it is
+**plausible, internally consistent, reproducible answers built on definitions
+nobody signed off on**. The human role shifts from writing queries to *defining
+metrics and auditing conclusions*.
 
 ## Repo structure
 
 ```
-01_general_agents/     Kimi vs Codex: six-question head-to-head (screenshots + notes)
-02_cloud_specialist/   Julius AI: data-quality deep-dive audit (screenshots + notes)
-03_local_deployment/   DB-GPT + Ollama deployment log and failure analysis
-ground_truth/          pandas / lifetimes scripts used to audit every claim
-data/                  dataset description (raw data not distributed)
+ground_truth/    pandas / lifetimes scripts that verified every claim
+screenshots/     agent conversation screenshots per question
+data/            dataset description (raw data not distributed)
+findings.md      per-question analysis with root causes
 ```
 
-## Background
+## Reproduce
 
-Done during a data-analysis internship program (2026). The companion repo [user-value-analytics](../user-value-analytics) contains the underlying RFM / cohort-retention / LTV analyses I built by hand — which is what made the auditing possible.
+```bash
+pip install pandas lifetimes
+python ground_truth/audit_baseline.py path/to/orders.csv
+python ground_truth/rfm_threshold_reproduction.py path/to/orders.csv
+```
+
+---
+
+Built during a data-analysis internship (2026). The underlying RFM / cohort-retention /
+LTV analyses I implemented by hand — which is what made auditing the agents possible —
+live in a companion repo.
