@@ -4,7 +4,7 @@
 and every answer re-computed by hand to see who was right.*
 
 **TL;DR: both agents executed code correctly, and they still disagreed.** The
-disagreements were not arithmetic errors — they were silent, undeclared choices of
+disagreements were not arithmetic errors, they were silent, undeclared choices of
 *definition*: which reference date, mean vs. median thresholds, whether a boundary
 includes equality. One such choice moved ~300 users between customer segments.
 
