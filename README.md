@@ -84,5 +84,5 @@ python ground_truth/rfm_threshold_reproduction.py path/to/orders.csv
 ---
 
 Built during a data-analysis internship (2026). The underlying RFM / cohort-retention /
-LTV analyses I implemented by hand — which is what made auditing the agents possible —
+LTV analyses I implemented by hand, which is what made auditing the agents possible —
 live in a companion repo.
