@@ -24,14 +24,14 @@ rather than guessing from a preview — which is what makes the disagreements in
 
 | Question | Kimi | Codex | Verified answer |
 |----------|------|-------|-----------------|
-| Row count | 23,287 ✗ | 23,288 ✓ | **23,288** — the file has no trailing newline, so newline-counting undercounts by one |
+| Row count | 23,287 ✗ | 23,288 ✓ ([screenshot](screenshots/q1_basics_and_q2_monthly_codex.png)) | **23,288** — the file has no trailing newline, so newline-counting undercounts by one |
 | Distinct users | 3,399 ✓ | 3,399 ✓ | 3,399 |
 | Time range | ✓ | ✓ | 2015-02-12 15:04 → 2020-04-25 21:34 |
-| Highest-revenue month | 2019-12, 10,030,508 ✓ | same ✓ | exact match |
-| RFM 8-segment sizes | high-value **948** | high-value **653** | *both correct* — different undeclared thresholds (median + ≥ vs mean) |
-| Churn threshold | 730 days, inferred "low-frequency / high-ticket retail" from the distribution | 585 days (= mean recency) | no ground truth — this is a business decision |
-| Per-user recency (R) | every value +1 day | 87% exact | different reference dates (2020-04-26 vs 2020-04-25 21:34), both declared |
-| Data-quality scan | 1,174 zero-amount orders, duplicated order id | + trailing spaces on all 23,288 order ids, 68 order-id/date mismatches | all verified ✓ |
+| Highest-revenue month | 2019-12, 10,030,508 ✓ | same ✓ ([screenshot](screenshots/q1_basics_and_q2_monthly_codex.png)) | exact match |
+| RFM 8-segment sizes | high-value **948** | high-value **653** ([screenshot](screenshots/q3_rfm_codex.png)) | *both correct* — different undeclared thresholds (median + ≥ vs mean) |
+| Churn threshold | 730 days, inferred "low-frequency / high-ticket retail" from the distribution | 585 days (= mean recency) ([screenshot](screenshots/q4_churn_and_q5_recency_codex.png)) | no ground truth — this is a business decision |
+| Per-user recency (R) | every value +1 day | 87% exact ([screenshot](screenshots/q4_churn_and_q5_recency_codex.png)) | different reference dates (2020-04-26 vs 2020-04-25 21:34), both declared |
+| Data-quality scan | 1,174 zero-amount orders, duplicated order id | + trailing spaces on all 23,288 order ids, 68 order-id/date mismatches ([screenshot](screenshots/q6_data_quality_codex.png)) | all verified ✓ |
 
 Details and root-cause analysis for each row: [`findings.md`](findings.md).
 
@@ -68,7 +68,7 @@ metrics and auditing conclusions*.
 
 ```
 ground_truth/    pandas / lifetimes scripts that verified every claim
-screenshots/     agent conversation screenshots per question
+screenshots/     agent conversation screenshots (see screenshots/README.md for an index)
 data/            dataset description (raw data not distributed)
 findings.md      per-question analysis with root causes
 ```
