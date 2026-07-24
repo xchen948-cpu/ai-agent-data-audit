@@ -1,10 +1,10 @@
 # Auditing AI Agents as Data Analysts
 
-*Two general-purpose AI agents, one real e-commerce dataset, six identical questions —
+*Two general-purpose AI agents, one real e-commerce dataset, six identical questions,
 and every answer re-computed by hand to see who was right.*
 
 **TL;DR: both agents executed code correctly, and they still disagreed.** The
-disagreements were not arithmetic errors — they were silent, undeclared choices of
+disagreements were not arithmetic errors, they were silent, undeclared choices of
 *definition*: which reference date, mean vs. median thresholds, whether a boundary
 includes equality. One such choice moved ~300 users between customer segments.
 
@@ -18,7 +18,7 @@ includes equality. One such choice moved ~300 users between customer segments.
 | **Ground truth** | [`ground_truth/`](ground_truth/) — runnable scripts |
 
 Both tools genuinely write and execute code on the uploaded file (agent behaviour),
-rather than guessing from a preview — which is what makes the disagreements interesting.
+rather than guessing from a preview, which is what makes the disagreements interesting.
 
 ## Scoreboard
 
@@ -84,5 +84,5 @@ python ground_truth/rfm_threshold_reproduction.py path/to/orders.csv
 ---
 
 Built during a data-analysis internship (2026). The underlying RFM / cohort-retention /
-LTV analyses I implemented by hand — which is what made auditing the agents possible —
+LTV analyses I implemented by hand, which is what made auditing the agents possible —
 live in a companion repo.
