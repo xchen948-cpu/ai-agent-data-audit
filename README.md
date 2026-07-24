@@ -18,7 +18,7 @@ includes equality. One such choice moved ~300 users between customer segments.
 | **Ground truth** | [`ground_truth/`](ground_truth/) — runnable scripts |
 
 Both tools genuinely write and execute code on the uploaded file (agent behaviour),
-rather than guessing from a preview — which is what makes the disagreements interesting.
+rather than guessing from a preview, which is what makes the disagreements interesting.
 
 ## Scoreboard
 
