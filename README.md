@@ -1,6 +1,6 @@
 # Auditing AI Agents as Data Analysts
 
-*Two general-purpose AI agents, one real e-commerce dataset, six identical questions —
+*Two general-purpose AI agents, one real e-commerce dataset, six identical questions,
 and every answer re-computed by hand to see who was right.*
 
 **TL;DR: both agents executed code correctly, and they still disagreed.** The
