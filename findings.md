@@ -5,25 +5,27 @@ All numbers below were verified by independent recomputation with pandas / lifet
 
 ---
 
-## 1. The row-count trap: even "how many rows" has a failure mode
+## 1. The row-count trap: the human baseline was the thing that broke
 
 **Question:** "How many rows does this file have?"
 
-| Agent | Answer |
-|-------|--------|
-| Kimi | 23,287 |
-| Codex | 23,288 |
-| pandas (`len(df)`) | **23,288** |
+| Source | Answer |
+|--------|--------|
+| Kimi | 23,288 rows in the file; 23,287 data rows if the header is excluded |
+| Codex | 23,288 rows; notes it would be 23,289 if the header counted as a row |
+| pandas (`len(df)`) | **23,288** data rows |
 
-**Root cause:** the CSV's last line has no trailing newline. Any method that counts
-newline characters (`wc -l`, naive line iteration) undercounts by one. My own
-initially prepared "ground truth" made the same mistake — the human baseline was
-wrong before the audit even started.
+Both agents were right, and both spontaneously disambiguated "file rows" vs
+"data rows" — a distinction the question did not make.
 
-**Lesson:** file-format edge cases (trailing newlines, BOM headers, trailing spaces)
-live below the abstraction layer that agents — and humans — usually look at.
+The failure was mine. My initial baseline came from a newline-counting command
+(`wc -l`), and this CSV has **no trailing newline on its last line**, so the count
+came back one short. I carried that number into the audit as "ground truth" and
+briefly scored a correct agent as wrong.
 
----
+**Lesson:** file-format edge cases (missing trailing newline, BOM headers, trailing
+spaces) sit below the abstraction layer both agents *and* auditors normally look at.
+The agents handled this one better than the human did.
 
 ## 2. RFM segmentation: same method, same data, 2× different answer
 
